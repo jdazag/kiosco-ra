@@ -24,6 +24,47 @@
     #close-ar { position:absolute; z-index:20; top:16px; right:16px; }
     #ar-status { position:absolute; z-index:20; left:12px; right:12px; bottom:20px; padding:12px; border-radius:12px; background:#102b3be8; color:white; text-align:center; }
     footer { padding:10px 18px 26px; text-align:center; color:#647783; font-size:.8rem; }
+    #news-panel {
+      display: none;
+      position: absolute;
+      z-index: 25;
+      left: 12px;
+      right: 12px;
+      bottom: 20px;
+      max-height: 55vh;
+      overflow-y: auto;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #183040;
+      box-shadow: 0 8px 30px #0005;
+    }
+
+    #news-panel.visible {
+      display: block;
+    }
+
+    #news-panel h2 {
+      font-size: 1.15rem;
+      margin: 10px 0;
+    }
+
+    #news-panel button,
+    #news-panel a {
+      display: inline-block;
+      margin: 4px 2px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: #087f5b;
+      color: white;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    #news-panel p {
+      line-height: 1.45;
+    }
   </style>
   <!-- Dependencias cargadas desde CDN; el teléfono debe tener conexión a Internet. -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -53,6 +94,19 @@
   <div id="ar-view" aria-label="Vista de realidad aumentada">
     <button id="close-ar" class="secondary">Cerrar ✕</button>
     <div id="ar-status">Apunta la cámara al marcador impreso.</div>
+    <section id="news-panel">
+      <strong>NOTICIAS DE LA CARRERA</strong>
+      <h2 id="news-title"></h2>
+      <p id="news-summary"></p>
+
+      <button id="prev-news">← Anterior</button>  
+      <button id="next-news">Siguiente →</button>
+      <button id="detail-toggle">Ver detalle</button>
+
+      <p id="news-detail" hidden></p>
+      <a id="open-news" href="#" target="_blank"
+        rel="noopener noreferrer">Abrir sitio oficial ↗</a>
+    </section>
     <a-scene
       mindar-image="imageTargetSrc: ./assets/marker.mind; autoStart: false; uiScanning: yes; maxTrack: 1;"
       color-space="sRGB"
@@ -72,6 +126,69 @@
   </div>
 
   <script>
+    const noticias = [
+    {
+      titulo: "Innovación tecnológica",
+      resumen: "Conoce los proyectos que conectan la informática con necesidades reales.",
+      detalle: "Aquí puedes publicar avances de proyectos estudiantiles y experiencias de innovación.",
+      url: "https://www.ipsantotomas.cl/areas-y-carreras/area-de-informatica/"
+    },
+    {
+      titulo: "Seminarios y actividades",
+      resumen: "Infórmate sobre charlas, talleres y encuentros de la carrera.",
+      detalle: "Añade fechas, horarios, lugares e inscripciones cuando estén confirmados.",
+      url: "https://www.ipsantotomas.cl/areas-y-carreras/area-de-informatica/"
+    },
+    {
+      titulo: "Oportunidades para estudiantes",
+      resumen: "Descubre iniciativas para fortalecer tu desarrollo profesional.",
+      detalle: "Este espacio puede informar sobre certificaciones, proyectos y actividades académicas.",
+      url: "https://www.ipsantotomas.cl/areas-y-carreras/area-de-informatica/"
+    }
+  ];
+
+  let noticiaActual = 0;
+
+  function mostrarNoticia() {
+    const noticia = noticias[noticiaActual];
+
+    document.getElementById("news-title").textContent =
+      noticia.titulo;
+
+    document.getElementById("news-summary").textContent =
+      noticia.resumen;
+
+    document.getElementById("news-detail").textContent =
+      noticia.detalle;
+
+    document.getElementById("news-detail").hidden = true;
+
+    document.getElementById("detail-toggle").textContent =
+      "Ver detalle";
+
+    document.getElementById("open-news").href = noticia.url;
+  }
+
+  document.getElementById("prev-news").onclick = () => {
+    noticiaActual =
+      (noticiaActual - 1 + noticias.length) % noticias.length;
+    mostrarNoticia();
+  };
+
+  document.getElementById("next-news").onclick = () => {
+    noticiaActual = (noticiaActual + 1) % noticias.length;
+    mostrarNoticia();
+  };
+
+  document.getElementById("detail-toggle").onclick = () => {
+    const detalle = document.getElementById("news-detail");
+    detalle.hidden = !detalle.hidden;
+
+    document.getElementById("detail-toggle").textContent =
+      detalle.hidden ? "Ver detalle" : "Ocultar detalle";
+  };
+
+  mostrarNoticia();
     const arView = document.getElementById('ar-view');
     const startButton = document.getElementById('start-ar');
     const closeButton = document.getElementById('close-ar');
@@ -90,8 +207,17 @@
         await system.start();
         started = true;
         status.textContent = 'Apunta la cámara al marcador impreso.';
-        scene.addEventListener('targetFound', () => status.textContent = '¡Marcador reconocido! Mueve el teléfono lentamente.', { once:false });
-        scene.addEventListener('targetLost', () => status.textContent = 'Marcador perdido. Vuelve a encuadrarlo.', { once:false });
+        scene.addEventListener("targetFound", () => {
+          status.textContent = "¡Marcador reconocido!";
+          document.getElementById("news-panel")
+            .classList.add("visible");
+        });
+
+        scene.addEventListener("targetLost", () => {
+          status.textContent = "Vuelve a encuadrar el marcador.";
+          document.getElementById("news-panel")
+            .classList.remove("visible");
+        });
       } catch (err) {
         status.textContent = 'No se pudo iniciar la cámara. Verifica HTTPS, permisos y compatibilidad del navegador.';
         console.error(err);
