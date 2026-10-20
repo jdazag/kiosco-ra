@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kiosco RA | Ingeniería en Informática</title>
+  <style>
+    :root { --navy:#123d56; --teal:#087f5b; --paper:#f5f8fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--paper); color:#183040; }
+    header { background:var(--navy); color:white; padding:20px 18px; }
+    header h1 { margin:0 0 6px; font-size:1.25rem; }
+    header p { margin:0; opacity:.9; font-size:.95rem; }
+    main { max-width:760px; margin:auto; padding:18px; }
+    .card { background:white; border-radius:16px; padding:18px; margin:0 0 14px; box-shadow:0 2px 12px #17364a12; }
+    .tag { display:inline-block; border-radius:999px; background:#e2f4ea; color:#075b42; padding:5px 10px; font-size:.8rem; font-weight:700; }
+    h2 { margin:10px 0; font-size:1.1rem; }
+    p { line-height:1.5; }
+    button, .button { display:inline-block; border:0; border-radius:10px; background:var(--teal); color:white; font-size:1rem; font-weight:700; padding:13px 16px; text-decoration:none; cursor:pointer; }
+    .secondary { background:#e8eef2; color:#183040; }
+    .note { font-size:.9rem; color:#506675; }
+    #ar-view { display:none; position:fixed; inset:0; z-index:10; background:#000; }
+    #ar-view.active { display:block; }
+    #close-ar { position:absolute; z-index:20; top:16px; right:16px; }
+    #ar-status { position:absolute; z-index:20; left:12px; right:12px; bottom:20px; padding:12px; border-radius:12px; background:#102b3be8; color:white; text-align:center; }
+    footer { padding:10px 18px 26px; text-align:center; color:#647783; font-size:.8rem; }
+  </style>
+  <!-- Dependencias cargadas desde CDN; el teléfono debe tener conexión a Internet. -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Kiosco Inteligente · Ingeniería en Informática</h1>
+    <p>Instituto Profesional Santo Tomás · Sede Iquique</p>
+  </header>
+  <main>
+    <section class="card">
+      <span class="tag">Prototipo experimental</span>
+      <h2>Explora el mural con realidad aumentada</h2>
+      <p>Apunta la cámara de tu teléfono al marcador impreso. Cuando la imagen sea reconocida, aparecerá un objeto 3D sobre ella.</p>
+      <button id="start-ar">Iniciar experiencia RA</button>
+      <p class="note">Se solicitará permiso para usar la cámara. Para funcionar, este sitio debe estar publicado mediante HTTPS y el archivo <code>assets/marker.mind</code> debe generarse a partir de <code>assets/marcador.png</code>.</p>
+    </section>
+    <section class="card">
+      <h2>Noticias de la carrera</h2>
+      <p>Este espacio se conectará más adelante con los contenidos institucionales autorizados.</p>
+      <p class="note">En esta primera versión, el foco es validar la cámara, el reconocimiento de imagen y la visualización 3D.</p>
+    </section>
+  </main>
+  <footer>Prototipo académico · No publicar información personal ni datos sensibles.</footer>
+
+  <div id="ar-view" aria-label="Vista de realidad aumentada">
+    <button id="close-ar" class="secondary">Cerrar ✕</button>
+    <div id="ar-status">Apunta la cámara al marcador impreso.</div>
+    <a-scene
+      mindar-image="imageTargetSrc: ./assets/marker.mind; autoStart: false; uiScanning: yes; maxTrack: 1;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded>
+      <a-assets>
+        <a-asset-item id="robot-model" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/Duck/glTF-Binary/Duck.glb"></a-asset-item>
+      </a-assets>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-gltf-model src="#robot-model" position="0 0.15 0" rotation="0 0 0" scale="0.45 0.45 0.45"></a-gltf-model>
+        <a-text value="¡Bienvenido!" color="#ffffff" align="center" position="0 -0.45 0" width="1.5"></a-text>
+      </a-entity>
+    </a-scene>
+  </div>
+
+  <script>
+    const arView = document.getElementById('ar-view');
+    const startButton = document.getElementById('start-ar');
+    const closeButton = document.getElementById('close-ar');
+    const status = document.getElementById('ar-status');
+    const scene = document.querySelector('a-scene');
+    let started = false;
+
+    startButton.addEventListener('click', async () => {
+      arView.classList.add('active');
+      status.textContent = 'Preparando cámara…';
+      try {
+        if (!scene.hasLoaded) {
+          await new Promise(resolve => scene.addEventListener('loaded', resolve, { once:true }));
+        }
+        const system = scene.systems['mindar-image-system'];
+        await system.start();
+        started = true;
+        status.textContent = 'Apunta la cámara al marcador impreso.';
+        scene.addEventListener('targetFound', () => status.textContent = '¡Marcador reconocido! Mueve el teléfono lentamente.', { once:false });
+        scene.addEventListener('targetLost', () => status.textContent = 'Marcador perdido. Vuelve a encuadrarlo.', { once:false });
+      } catch (err) {
+        status.textContent = 'No se pudo iniciar la cámara. Verifica HTTPS, permisos y compatibilidad del navegador.';
+        console.error(err);
+      }
+    });
+
+    closeButton.addEventListener('click', async () => {
+      try {
+        if (started) {
+          await scene.systems['mindar-image-system'].stop();
+          started = false;
+        }
+      } catch (err) { console.warn(err); }
+      arView.classList.remove('active');
+    });
+  </script>
+</body>
+</html>
